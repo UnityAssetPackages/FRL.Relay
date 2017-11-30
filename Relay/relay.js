@@ -1,11 +1,25 @@
 var udp = require('dgram');
 var math3d = require('math3d');
-const holojam = require('holojam-node')(['relay']);
 
+ip_addresses = []
+count = 0
+process.argv.forEach(function (val, index, array) {
+	if (count > 1) {
+		ip_addresses.push(val);
+	}
+	count++;
+});
+
+console.log("Sending to: " + ip_addresses)
+
+const holojam = require('holojam-node')(['relay']);
+holojam.unicastAddresses = ip_addresses
 var Vector3 = math3d.Vector3;
 var Quaternion = math3d.Quaternion;
 
 var pool = {}
+
+
 
 holojam.on('update', (flakes, scope, origin) => {
 	for (var i=0; i < flakes.length; i++) {
