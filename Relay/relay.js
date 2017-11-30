@@ -87,7 +87,7 @@ function pprintItem(key, value) {
 var ping = [{label: 'ping'}]
 
 setInterval(() => {
-	holojam.Send(holojam.BuildUpdate('ping', ping));
+	//holojam.Send(holojam.BuildUpdate('ping', ping));
 	
 	console.log("\n" + getCurrentDate());
 	if (!isEmpty(pool)) {
