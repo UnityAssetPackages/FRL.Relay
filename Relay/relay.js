@@ -13,12 +13,11 @@ process.argv.forEach(function (val, index, array) {
 console.log("Sending to: " + ip_addresses)
 
 const holojam = require('holojam-node')(['relay']);
-holojam.unicastAddresses = ip_addresses
+holojam.ucAddresses = holojam.ucAddresses.concat(ip_addresses);
 var Vector3 = math3d.Vector3;
 var Quaternion = math3d.Quaternion;
 
 var pool = {}
-
 
 
 holojam.on('update', (flakes, scope, origin) => {
@@ -85,7 +84,11 @@ function pprintItem(key, value) {
 	console.log(memo);
 }
 
+var ping = [{label: 'ping'}]
+
 setInterval(() => {
+	holojam.Send(holojam.BuildUpdate('ping', ping));
+	
 	console.log("\n" + getCurrentDate());
 	if (!isEmpty(pool)) {
 		sorted_keys = []
