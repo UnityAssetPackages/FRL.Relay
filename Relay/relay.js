@@ -1,23 +1,31 @@
 var udp = require('dgram');
 var math3d = require('math3d');
 
-ip_addresses = []
+
 count = 0
-process.argv.forEach(function (val, index, array) {
+/* process.argv.forEach(function (val, index, array) {
 	if (count > 1) {
 		ip_addresses.push(val);
 	}
 	count++;
 });
+ */
+//console.log("Sending to: " + ip_addresses)
 
-console.log("Sending to: " + ip_addresses)
+var sourceIP = "127.0.0.1";
+var argv = require('minimist')(process.argv.slice(2));
+if(argv["source"] != null){
+	sourceIP = argv["source"];
+}
 
+ip_addresses = []
 const holojam = require('holojam-node')(['relay']);
 holojam.ucAddresses = holojam.ucAddresses.concat(ip_addresses);
 var Vector3 = math3d.Vector3;
 var Quaternion = math3d.Quaternion;
 
 var pool = {}
+
 
 
 holojam.on('update', (flakes, scope, origin) => {
@@ -84,7 +92,7 @@ function pprintItem(key, value) {
 	console.log(memo);
 }
 
-var ping = [{label: 'ping'}]
+//var ping = [{label: 'ping'}]
 
 setInterval(() => {
 	//holojam.Send(holojam.BuildUpdate('ping', ping));
@@ -110,7 +118,10 @@ setInterval(() => {
 
 
 var server = udp.createSocket('udp4');
-server.bind(10000);
+server.bind({
+  address: sourceIP,
+  port: 10000
+});
 server.on('error', function(error) {
 	console.log("Error: " + error);
 	server.close()
@@ -132,7 +143,7 @@ var calibratedSource = undefined
 var lighthouses = {}
 
 function tryAssignLighthouse(address, trackedObject) {
-	if (!calibratedSource)
+	if (!calibratedSource && server.address().address == address)
 		calibratedSource = address
 	lighthouses[address] = trackedObject;
 }
@@ -191,7 +202,7 @@ server.on('message', function(message, info){
 			trackedObject['floats'] = [0., 0., 0., 0., 0., 0.]
 		}
 
-		if (trackedObject['label'] == "LIGHTHOUSE_1") {
+		if (trackedObject['label'].includes("LIGHTHOUSE")) {
 			tryAssignLighthouse(info.address, trackedObject);
 		}
 
