@@ -120,18 +120,17 @@ optirx = require('optirx');
 
 var optitrack = udp.createSocket('udp4');
 
-
 optitrack.on('listening', function () {
     var address = optitrack.address();
-    console.log('Optitrack Client listening on ' + address.address + ":" + address.port);
-    optitrack.setBroadcast(true);
+    console.log('Optitrack listening on ' + address.address + ":" + address.port);
+    //optitrack.setBroadcast(true);
     optitrack.setMulticastTTL(128); 
-    optitrack.addMembership('239.255.42.99', '192.168.1.44');
+    optitrack.addMembership('239.255.42.99', '127.0.0.1');
 });
 
 optitrack.bind({
-	address: '192.168.1.44',
-	port: 1512
+	address: '127.0.0.1',
+	port: 1511
 });
 
 
@@ -141,7 +140,7 @@ optitrack.on('error', function(error) {
 });
 
 optitrack.on('close', function(){
-	console.log('Socket optitrack is closed.');
+	console.log('Optitrack is closed.');
 });
 
 optitrack.on('message', function(message, info){
@@ -167,9 +166,9 @@ viveServer.on('close', function(){
 
 viveServer.on('listening', function(){
 	var address = viveServer.address();
-	console.log('Socket viveServer listening on port: ' + address.port);
-	console.log('Socket viveServer ip address: ' + address.address);
-	console.log('Socket viveServer is ' + address.family);
+	console.log('ViveServer listening on port: ' + address.port);
+	console.log('ViveServer ip address: ' + address.address);
+	console.log('ViveServer is ' + address.family);
 });
 
 
