@@ -17,7 +17,7 @@ if(argv["source"] != null){
 	sourceIP = argv["source"];
 }
 
-ip_addresses = ['192.168.1.6', '192.168.1.20']
+ip_addresses = ['192.168.1.6', '192.168.1.20', '192.168.1.28']
 const holojam = require('holojam-node')(['relay']);
 holojam.ucAddresses = holojam.ucAddresses.concat(ip_addresses);
 var Vector3 = math3d.Vector3;
@@ -155,8 +155,9 @@ optitrack.on('message', function(message, info){
 		//console.log(id);
 		body = {
 			label: id,
-			vector3s: [{x: position[0], y:position[1], z:position[2]}],
-			vector4s: [{x: rotation[0], y:rotation[1], z:rotation[2], w:rotation[3]}]
+			// note negation of some values to convert to unity's left-hand coordinate system
+			vector3s: [{x: -position[0], y:position[1], z:position[2]}],
+			vector4s: [{x: -rotation[0], y:rotation[1], z:rotation[2], w:-rotation[3]}]
 		}
 		rigidbodies.push(body);
 		pool[body['label']] = body;
