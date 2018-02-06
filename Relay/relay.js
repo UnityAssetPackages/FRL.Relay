@@ -17,7 +17,7 @@ if(argv["source"] != null){
 	sourceIP = argv["source"];
 }
 
-ip_addresses = []
+ip_addresses = ['192.168.1.6']
 const holojam = require('holojam-node')(['relay']);
 holojam.ucAddresses = holojam.ucAddresses.concat(ip_addresses);
 var Vector3 = math3d.Vector3;
@@ -118,7 +118,7 @@ setInterval(() => {
 
 optirx = require('optirx');
 
-var optitrack = udp.createSocket('udp4');
+var optitrack = udp.createSocket({type: 'udp4', reuseAddr: true});
 
 optitrack.on('listening', function () {
     var address = optitrack.address();
@@ -130,7 +130,7 @@ optitrack.on('listening', function () {
 
 optitrack.bind({
 	address: '127.0.0.1',
-	port: 1511
+	port: 1511  
 });
 
 
@@ -144,16 +144,70 @@ optitrack.on('close', function(){
 });
 
 optitrack.on('message', function(message, info){
-	console.log("Got message from Optitrack.");
 	unpackedData = optirx.unpack(message);
+	//console.log(unpackedData['rigid_bodies']);
+	rigidbodies = []
+	for (var i = 0; i < unpackedData['rigid_bodies'].length; i++) {
+		var rbody = unpackedData['rigid_bodies'][i];
+		var position = rbody['position'];
+		var rotation = rbody['orientation'];
+		var id = "RB" + rbody['id'];
+		//console.log(id);
+		body = {
+			label: id,
+			vector3s: [{x: position[0], y:position[1], z:position[2]}],
+			vector4s: [{x: rotation[0], y:rotation[1], z:rotation[2], w:rotation[3]}]
+		}
+		rigidbodies.push(body);
+	}
+	holojam.Send(holojam.BuildUpdate('Optitrack', rigidbodies));
+
 });
 
+
+
+// var json = JSON.parse(message.toString());
+// 	var trackedObjects = []
+// 	for (var key in json) {
+// 		if(!json.hasOwnProperty(key) || key == 'time'){
+// 			continue;
+// 		}
+// 		trackedObject = { 
+// 			label: json[key].id,
+// 	    	vector3s: [{x: parseFloat(json[key].x), y: parseFloat(json[key].y), z: -parseFloat(json[key].z)}],
+// 			vector4s: [{x: parseFloat(json[key].qx), y: parseFloat(json[key].qy), z: -parseFloat(json[key].qz), w: -parseFloat(json[key].qw)}]
+// 		};
+// 		if (json[key]["triggerPress"] != undefined) {
+// 			trackedObject['ints'] = [parseInt(json[key]['appMenuPress']), parseInt(json[key]['gripPress']), parseInt(json[key]['touchpadPress']), parseInt(json[key]['triggerPress']), 0, 0]
+// 			trackedObject['floats'] = [0., 0., 0., 0., 0., 0.]
+// 		}
+
+// 		if (trackedObject['label'].includes("LIGHTHOUSE")) {
+// 			tryAssignLighthouse(info.address, trackedObject);
+// 		}
+
+// 		if (trackedObject['label'].includes("LIGHTHOUSE")) {
+// 			//Don't send lighthouses!
+// 			continue;
+// 		}
+		
+// 		trackedObject = tryCalibrateObject(info.address, trackedObject)
+
+// 		if (trackedObject['label'] != undefined) {
+// 			trackedObjects.push(trackedObject);
+// 		}
+// 		pool[json[key].id] = trackedObject;
+// 	}
+// 	if (!isEmpty(trackedObjects)) {
+// 		holojam.Send(holojam.BuildUpdate('Vive', trackedObjects));
+// 	}
 
 
 var viveServer = udp.createSocket('udp4');
 viveServer.bind({
   address: sourceIP,
-  port: 10000
+  port: 10000,
+  reuseAddr: true,
 });
 viveServer.on('error', function(error) {
 	console.log("Error: " + error);
