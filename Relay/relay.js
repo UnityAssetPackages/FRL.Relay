@@ -1,7 +1,6 @@
 var udp = require('dgram');
 var math3d = require('math3d');
 
-
 count = 0
 /* process.argv.forEach(function (val, index, array) {
 	if (count > 1) {
@@ -117,25 +116,60 @@ setInterval(() => {
 }, 1000);
 
 
-var server = udp.createSocket('udp4');
-server.bind({
+optirx = require('optirx');
+
+var optitrack = udp.createSocket('udp4');
+
+
+optitrack.on('listening', function () {
+    var address = optitrack.address();
+    console.log('Optitrack Client listening on ' + address.address + ":" + address.port);
+    optitrack.setBroadcast(true);
+    optitrack.setMulticastTTL(128); 
+    optitrack.addMembership('239.255.42.99', '192.168.1.44');
+});
+
+optitrack.bind({
+	address: '192.168.1.44',
+	port: 1512
+});
+
+
+optitrack.on('error', function(error) {
+	console.log("Error: " + error);
+	optitrack.close()
+});
+
+optitrack.on('close', function(){
+	console.log('Socket optitrack is closed.');
+});
+
+optitrack.on('message', function(message, info){
+	console.log("Got message from Optitrack.");
+	unpackedData = optirx.unpack(message);
+});
+
+
+
+var viveServer = udp.createSocket('udp4');
+viveServer.bind({
   address: sourceIP,
   port: 10000
 });
-server.on('error', function(error) {
+viveServer.on('error', function(error) {
 	console.log("Error: " + error);
-	server.close()
+	viveServer.close()
 });
 
-server.on('close', function(){
-	console.log('Socket server is closed.');
+viveServer.on('close', function(){
+	console.log('Socket viveServer is closed.');
 });
 
-server.on('listening', function(){
-	var address = server.address();
-	console.log('Socket server listening on port: ' + address.port);
-	console.log('Socket server ip address: ' + address.address);
-	console.log('Socket server is ' + address.family);
+viveServer.on('listening', function(){
+	var address = viveServer.address();
+	console.log('Socket viveServer listening on port: ' + address.port);
+	console.log('Socket viveServer ip address: ' + address.address);
+	console.log('Socket viveServer is ' + address.family);
 });
 
 
@@ -143,7 +177,7 @@ var calibratedSource = undefined
 var lighthouses = {}
 
 function tryAssignLighthouse(address, trackedObject) {
-	if (!calibratedSource && server.address().address == address)
+	if (!calibratedSource && viveServer.address().address == address)
 		calibratedSource = address
 	lighthouses[address] = trackedObject;
 }
@@ -185,7 +219,7 @@ function tryCalibrateObject(address, trackedObject) {
 	return trackedObject;
 }
 
-server.on('message', function(message, info){
+viveServer.on('message', function(message, info){
 	var json = JSON.parse(message.toString());
 	var trackedObjects = []
 	for (var key in json) {
