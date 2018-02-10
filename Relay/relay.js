@@ -25,8 +25,6 @@ var Quaternion = math3d.Quaternion;
 
 var pool = {}
 
-
-
 holojam.on('update', (flakes, scope, origin) => {
 	for (var i=0; i < flakes.length; i++) {
 		var flake = flakes[i];
@@ -144,7 +142,12 @@ optitrack.on('close', function(){
 });
 
 optitrack.on('message', function(message, info){
+	//console.log(message);
+	//json = JSON.stringify(message);
+	//console.log(json);
+	//unpackedData = optirx.unpack(json);
 	unpackedData = optirx.unpack(message);
+	//console.log(unpackedData);
 	//console.log(unpackedData['rigid_bodies']);
 	rigidbodies = []
 	for (var i = 0; i < unpackedData['rigid_bodies'].length; i++) {
@@ -159,9 +162,11 @@ optitrack.on('message', function(message, info){
 			vector3s: [{x: -position[0], y:position[1], z:position[2]}],
 			vector4s: [{x: -rotation[0], y:rotation[1], z:rotation[2], w:-rotation[3]}]
 		}
+		//console.log(body);
 		rigidbodies.push(body);
 		pool[body['label']] = body;
 	}
+	//console.log("sending...");
 	holojam.Send(holojam.BuildUpdate('Optitrack', rigidbodies));
 
 });
