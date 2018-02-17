@@ -17,9 +17,38 @@ if(argv["source"] != null){
 	sourceIP = argv["source"];
 }
 
-ip_addresses = ['192.168.1.6', '192.168.1.20', '192.168.1.28']
+var framerate = 30.;
+if (argv["framerate"] != null) {
+	framerate = argv["framerate"];
+}
+
+var tracked_ips_only = false;
+if (argv['tracked-ips-only'])
+	tracked_ips_only = true;
+
+var target_data_only = false;
+if (argv['target-data-only'])
+	target_data_only = true;
+
+//These will get unicast to no matter what!
+saved_ips = ['192.168.1.6', '192.168.1.20', '192.168.1.28', '192.168.1.42', '192.168.1.39']
+
+//These are overriding ip mappings. 
+tracked_ip_mappings = { 
+	"RB2" : "192.168.1.42"
+}
+
+for (var i = 1; i < 151; i++) {
+	name = "RB" + i.toString();
+	ip = "192.168.1." + (100 + i).toString();
+	if (tracked_ip_mappings[name] == undefined)
+		tracked_ip_mappings[name] = ip;
+}
+
+console.log("\n");
 const holojam = require('holojam-node')(['relay']);
-holojam.ucAddresses = holojam.ucAddresses.concat(ip_addresses);
+console.log("Sending at " + framerate + " fps.");
+holojam.ucAddresses = holojam.ucAddresses.concat(saved_ips);
 var Vector3 = math3d.Vector3;
 var Quaternion = math3d.Quaternion;
 
@@ -89,11 +118,7 @@ function pprintItem(key, value) {
 	console.log(memo);
 }
 
-//var ping = [{label: 'ping'}]
-
-setInterval(() => {
-	//holojam.Send(holojam.BuildUpdate('ping', ping));
-	
+setInterval(() => {	
 	console.log("\n" + getCurrentDate());
 	if (!isEmpty(pool)) {
 		sorted_keys = []
@@ -108,19 +133,21 @@ setInterval(() => {
 		console.log("\n");
 		pool = {};
 	}
-	console.log("IP addresses: " + holojam.ucAddresses);
-	console.log("Vive Sources: " + Object.keys(lighthouses));
-	console.log("Calibrated Source: " + calibratedSource);
+	console.log("IP addresses: " + holojam.ucAddresses + "\n");
+	if (lighthouses.count > 0) console.log("Vive Sources: " + Object.keys(lighthouses));
+	if (calibratedSource) console.log("Calibrated Source: " + calibratedSource);
 }, 1000);
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////// Optitrack
+////////////////////////////////////////////////////////////////////////////////
 
 
 optirx = require('optirx');
-
 var optitrack = udp.createSocket({type: 'udp4', reuseAddr: true});
-
 optitrack.on('listening', function () {
     var address = optitrack.address();
-    console.log('Optitrack listening on ' + address.address + ":" + address.port);
+    console.log('\nOptitrack listening on ' + address.address + ":" + address.port);
     //optitrack.setBroadcast(true);
     optitrack.setMulticastTTL(128); 
     optitrack.addMembership('239.255.42.99', '127.0.0.1');
@@ -131,47 +158,74 @@ optitrack.bind({
 	port: 1511  
 });
 
-
 optitrack.on('error', function(error) {
 	console.log("Error: " + error);
 	optitrack.close()
 });
 
 optitrack.on('close', function(){
-	console.log('Optitrack is closed.');
+	console.log('Optitrack server closed.');
 });
 
+rigidbodies = [];
 optitrack.on('message', function(message, info){
-	//console.log(message);
-	//json = JSON.stringify(message);
-	//console.log(json);
-	//unpackedData = optirx.unpack(json);
 	unpackedData = optirx.unpack(message);
-	//console.log(unpackedData);
-	//console.log(unpackedData['rigid_bodies']);
-	rigidbodies = []
+	rigidbodies = [];
+	rigidbodies.push({
+		label : "connected",
+	});
 	for (var i = 0; i < unpackedData['rigid_bodies'].length; i++) {
 		var rbody = unpackedData['rigid_bodies'][i];
+
+		if (!rbody['tracking_valid']) continue; //Skip untracked markers.
+
 		var position = rbody['position'];
 		var rotation = rbody['orientation'];
 		var id = "RB" + rbody['id'];
-		//console.log(id);
+
 		body = {
 			label: id,
 			// note negation of some values to convert to unity's left-hand coordinate system
 			vector3s: [{x: -position[0], y:position[1], z:position[2]}],
 			vector4s: [{x: -rotation[0], y:rotation[1], z:rotation[2], w:-rotation[3]}]
 		}
-		//console.log(body);
 		rigidbodies.push(body);
 		pool[body['label']] = body;
 	}
-	//console.log("sending...");
-	holojam.Send(holojam.BuildUpdate('Optitrack', rigidbodies));
-
 });
 
+setInterval(() => {
+	if (rigidbodies.length == 0) return;
 
+	ips = saved_ips;
+	if (target_data_only) {
+		//Only send to specific target.
+		for (var i = 0; i < rigidbodies.length; i++) {
+			body = rigidbodies[i];
+			if (!tracked_ip_mappings[body['label']]) continue;
+			var ip = tracked_ip_mappings[body['label']];		
+			var pack = holojam.BuildUpdate('Optitrack', [body]);
+			holojam.SendToAddress(pack, ip);
+		}
+		holojam.Send(holojam.BuildUpdate('Optitrack', rigidbodies));
+	} else {
+		if (tracked_ips_only) {
+			for (var i = 0; i < rigidbodies.length; i++) {
+				body = rigidbodies[i];
+				if (!tracked_ip_mappings[body['label']]) continue;
+				var ip = tracked_ip_mappings[body['label']];
+				if (!ips.includes(ip)) ips.push(ip);
+			}
+			holojam.ucAddresses = ips;
+		}
+		holojam.Send(holojam.BuildUpdate('Optitrack', rigidbodies));
+	}
+}, 1000./framerate);
+
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////// Vive
+////////////////////////////////////////////////////////////////////////////////
 
 var viveServer = udp.createSocket('udp4');
 viveServer.bind({
@@ -179,20 +233,19 @@ viveServer.bind({
   port: 10000,
   reuseAddr: true,
 });
+
 viveServer.on('error', function(error) {
 	console.log("Error: " + error);
 	viveServer.close()
 });
 
 viveServer.on('close', function(){
-	console.log('Socket viveServer is closed.');
+	console.log('Vive socket closed.');
 });
 
 viveServer.on('listening', function(){
 	var address = viveServer.address();
-	console.log('ViveServer listening on port: ' + address.port);
-	console.log('ViveServer ip address: ' + address.address);
-	console.log('ViveServer is ' + address.family);
+	console.log('\nVive listening on ' + address.address + ":" + address.port);
 });
 
 
@@ -242,9 +295,10 @@ function tryCalibrateObject(address, trackedObject) {
 	return trackedObject;
 }
 
+var trackedObjects = [];
 viveServer.on('message', function(message, info){
 	var json = JSON.parse(message.toString());
-	var trackedObjects = []
+	trackedObjects = [];
 	for (var key in json) {
 		if(!json.hasOwnProperty(key) || key == 'time'){
 			continue;
@@ -275,7 +329,10 @@ viveServer.on('message', function(message, info){
 		}
 		pool[json[key].id] = trackedObject;
 	}
+});
+
+setInterval(() => {
 	if (!isEmpty(trackedObjects)) {
 		holojam.Send(holojam.BuildUpdate('Vive', trackedObjects));
 	}
-});
+}, 1000./framerate);
