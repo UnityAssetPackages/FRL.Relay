@@ -49,6 +49,9 @@ DEFAULT_SERIALS = {
 	#"LHR-FFC35D41" : "",
 	#"LHR-03DF1C85" : "",
 
+        "LHR-08DF4A85" : "VR-CT1",
+        "LHR-09DF5547" : "VR-CT2",
+
 }
 
 DEFAULT_IP_ADDRESS = '127.0.0.1'
@@ -138,6 +141,7 @@ class ViveDeviceEmitter(object):
 					if item == 'time':
 						continue
 					print("{}:\t{}".format(item, send_data[item]['id']))
+					print(send_data[item]['x'])
 					if 'controller' in item:
 						print('Grip: {}\tTrigger: {}\tTouchpad: {}\tAppMenu: {}'.format(
 							send_data[item]['gripPress'], send_data[item]['triggerPress'],
