@@ -12,7 +12,7 @@ count = 0;
 //console.log("Sending to: " + ip_addresses)
 
 // for verizon 5g
-downstramPorts = [];
+downstramPorts = [9591];
 
 var sourceIP = "127.0.0.1";
 var argv = require('minimist')(process.argv.slice(2));
@@ -23,7 +23,7 @@ if(argv["source"] != null){
 if(argv["dwPorts"] != null){
 	var dwPorts = argv["dwPorts"];
 	//var fs = require('fs');
-
+downstramPorts = [];
 dwPorts.substr(1,dwPorts.length-2).split(",").forEach(function(port){
 			downstramPorts.push(port);
 		});
