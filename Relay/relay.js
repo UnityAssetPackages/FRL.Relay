@@ -31,10 +31,11 @@ if (argv['target-data-only'])
 	target_data_only = true;
 
 //These will get unicast to no matter what!
-saved_ips = ['192.168.1.6', '192.168.1.20', '192.168.1.28', '192.168.1.42', '192.168.1.39']
+saved_ips = ['192.168.1.6', '192.168.1.20', '192.168.1.28', '192.168.1.42', '192.168.1.39', '192.168.1.47', '192.168.1.70', '192.168.1.71','192.168.1.22']
 
 //These are overriding ip mappings. 
 tracked_ip_mappings = { 
+	"RB1" : "192.168.1.42",
 	"RB2" : "192.168.1.42"
 }
 
@@ -118,6 +119,11 @@ function pprintItem(key, value) {
 	console.log(memo);
 }
 
+var total_buffer_size = 0;
+var total_buffer_sent = 0;
+var total_sending_time = 0;
+var total_number_of_sends = 0;
+
 setInterval(() => {	
 	console.log("\n" + getCurrentDate());
 	if (!isEmpty(pool)) {
@@ -136,6 +142,14 @@ setInterval(() => {
 	console.log("IP addresses: " + holojam.ucAddresses + "\n");
 	if (lighthouses.count > 0) console.log("Vive Sources: " + Object.keys(lighthouses));
 	if (calibratedSource) console.log("Calibrated Source: " + calibratedSource);
+	var avg_buffer_size = total_buffer_size / total_buffer_sent;
+	var avg_sending_time = total_sending_time / total_number_of_sends;
+	total_buffer_size = 0;
+	total_buffer_sent = 0;
+	total_sending_time = 0;
+	total_number_of_sends = 0;
+	console.log("Average Buffer Size: " + avg_buffer_size);
+	console.log("Average sending time: " + avg_sending_time);
 }, 1000);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,6 +188,7 @@ optitrack.on('message', function(message, info){
 	rigidbodies.push({
 		label : "connected",
 	});
+	//console.log(unpackedData);
 	for (var i = 0; i < unpackedData['rigid_bodies'].length; i++) {
 		var rbody = unpackedData['rigid_bodies'][i];
 
@@ -189,16 +204,41 @@ optitrack.on('message', function(message, info){
 			vector3s: [{x: -position[0], y:position[1], z:position[2]}],
 			vector4s: [{x: -rotation[0], y:rotation[1], z:rotation[2], w:-rotation[3]}]
 		}
+		//console.log(body);
 		rigidbodies.push(body);
 		pool[body['label']] = body;
 	}
+	var set = unpackedData['sets'];
+	
+	Object.keys(set).forEach(function(key) {
+		if (key != "all") {
+			markers = set[key];
+			key = key.replace(/[^\d.]/g, '');
+			key = parseInt(key);
+			if(key >= 100){
+				body = {
+					label: "MK" + key,
+					vector3s: [],
+					vector4s: [{x:0, y:0, z:0, w:1}]
+				}
+				markers.forEach(function(marker){
+					body.vector3s.push({x:-marker[0], y:marker[1], z:marker[2]});
+				});
+				//console.log(body);
+				rigidbodies.push(body);
+				pool[body['label']] = body;
+			}
+		}
+	});
 });
+
 
 setInterval(() => {
 	if (rigidbodies.length == 0) return;
 
 	ips = saved_ips;
 	if (target_data_only) {
+		var t1 = Date.now();
 		//Only send to specific target.
 		for (var i = 0; i < rigidbodies.length; i++) {
 			body = rigidbodies[i];
@@ -207,8 +247,14 @@ setInterval(() => {
 			var pack = holojam.BuildUpdate('Optitrack', [body]);
 			holojam.SendToAddress(pack, ip);
 		}
-		holojam.Send(holojam.BuildUpdate('Optitrack', rigidbodies));
+		var buffer = holojam.Send(holojam.BuildUpdate('Optitrack', rigidbodies));
+		var t2 = Date.now();
+		total_sending_time += t2 - t1;
+		total_number_of_sends += 1;
+		total_buffer_sent += 1;
+		total_buffer_size += buffer.length;
 	} else {
+		var t1 = Date.now();
 		if (tracked_ips_only) {
 			for (var i = 0; i < rigidbodies.length; i++) {
 				body = rigidbodies[i];
@@ -218,7 +264,12 @@ setInterval(() => {
 			}
 			holojam.ucAddresses = ips;
 		}
-		holojam.Send(holojam.BuildUpdate('Optitrack', rigidbodies));
+		var buffer = holojam.Send(holojam.BuildUpdate('Optitrack', rigidbodies));
+		var t2 = Date.now();
+		total_sending_time += t2 - t1;
+		total_number_of_sends += 1;
+		total_buffer_sent += 1;
+		total_buffer_size += buffer.length;
 	}
 }, 1000./framerate);
 
