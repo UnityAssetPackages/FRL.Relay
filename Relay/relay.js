@@ -12,7 +12,7 @@ count = 0;
 //console.log("Sending to: " + ip_addresses)
 
 // for verizon 5g
-downstramPorts = [9591];
+downstreamPorts = [9591];
 
 var sourceIP = "127.0.0.1";
 var argv = require('minimist')(process.argv.slice(2));
@@ -23,11 +23,11 @@ if(argv["source"] != null){
 if(argv["dwPorts"] != null){
 	var dwPorts = argv["dwPorts"];
 	//var fs = require('fs');
-downstramPorts = [];
+downstreamPorts = [];
 dwPorts.substr(1,dwPorts.length-2).split(",").forEach(function(port){
-			downstramPorts.push(port);
+			downstreamPorts.push(port);
 		});
-console.log(downstramPorts);
+console.log(downstreamPorts);
 /* 	fs.readFileSync(dwfv, {encoding: 'utf-8'}, function(err, data) {
 		console.log("utf 8 " + data);
 		data.toString().split(" ").forEach(function(port){
@@ -65,8 +65,8 @@ for (var i = 1; i < 151; i++) {
 		tracked_ip_mappings[name] = ip;
 }
 
-console.log("\n" + downstramPorts + "\n");
-const holojam = require('holojam-node')(['relay'], '0.0.0.0', 9593, 9592, downstramPorts);
+console.log("\n" + downstreamPorts + "\n");
+const holojam = require('holojam-node')(['relay'], '0.0.0.0', 9593, 9592, downstreamPorts);
 console.log("Sending at " + framerate + " fps.");
 //holojam.ucAddresses = holojam.ucAddresses.concat(saved_ips);
 var Vector3 = math3d.Vector3;
