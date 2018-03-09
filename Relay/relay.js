@@ -17,7 +17,7 @@ if(argv["source"] != null){
 	sourceIP = argv["source"];
 }
 
-var framerate = 30.;
+var framerate = 60.;
 if (argv["framerate"] != null) {
 	framerate = argv["framerate"];
 }
@@ -124,7 +124,7 @@ var total_buffer_sent = 0;
 var total_sending_time = 0;
 var total_number_of_sends = 0;
 
-setInterval(() => {	
+/* setInterval(() => {	
 	console.log("\n" + getCurrentDate());
 	if (!isEmpty(pool)) {
 		sorted_keys = []
@@ -150,7 +150,7 @@ setInterval(() => {
 	total_number_of_sends = 0;
 	console.log("Average Buffer Size: " + avg_buffer_size);
 	console.log("Average sending time: " + avg_sending_time);
-}, 1000);
+}, 1000); */
 
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////// Optitrack
@@ -278,7 +278,7 @@ setInterval(() => {
 //////////////////// Vive
 ////////////////////////////////////////////////////////////////////////////////
 
-var viveServer = udp.createSocket('udp4');
+/* var viveServer = udp.createSocket('udp4');
 viveServer.bind({
   address: sourceIP,
   port: 10000,
@@ -297,7 +297,7 @@ viveServer.on('close', function(){
 viveServer.on('listening', function(){
 	var address = viveServer.address();
 	console.log('\nVive listening on ' + address.address + ":" + address.port);
-});
+}); */
 
 
 var calibratedSource = undefined
@@ -347,7 +347,7 @@ function tryCalibrateObject(address, trackedObject) {
 }
 
 var trackedObjects = [];
-viveServer.on('message', function(message, info){
+/* viveServer.on('message', function(message, info){
 	var json = JSON.parse(message.toString());
 	trackedObjects = [];
 	for (var key in json) {
@@ -380,7 +380,7 @@ viveServer.on('message', function(message, info){
 		}
 		pool[json[key].id] = trackedObject;
 	}
-});
+}); */
 
 setInterval(() => {
 	if (!isEmpty(trackedObjects)) {
